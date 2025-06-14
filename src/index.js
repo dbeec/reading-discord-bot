@@ -118,7 +118,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const [, lang, level] = interaction.customId.split("_");
 
       try {
-        const message = await getReading(lang, level);
+        const user = interaction.user;
+        const message = await getReading(lang, level, user);
         return interaction.update({
           content: message,
           components: [],

@@ -18,7 +18,8 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-async function getReading(lang, level) {
+// Ahora recibe el usuario como parámetro
+async function getReading(lang, level, user) {
   const url = SHEET_URLS[lang]?.[level];
   if (!url) return "❌ No se encontró URL para ese idioma o nivel.";
 
@@ -32,7 +33,7 @@ async function getReading(lang, level) {
     const random = readings[Math.floor(Math.random() * readings.length)];
 
     return (
-      `📖 **${capitalize(random.title)}**\n` +
+      `👤 **Lectura por:** <@${user.id}>\n\n` +
       `🧠 Nivel: ${capitalize(random.level)}\n\n` +
       `${random.text}`
     );
