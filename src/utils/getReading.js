@@ -33,7 +33,7 @@ async function getReading(lang, level, user) {
     const random = readings[Math.floor(Math.random() * readings.length)];
 
     return (
-      `👤 **Lectura por:** <@${user.id}>\n\n` +
+      `👤 Lectura por: <@${user.id}>\n` +
       `🧠 Nivel: ${capitalize(random.level)}\n\n` +
       `${random.text}`
     );
