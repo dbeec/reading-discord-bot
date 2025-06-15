@@ -13,9 +13,12 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
+const {
+  isInQueue,
+} = require("./utils/queueManager.js");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 });
 
 client.commands = new Collection();
@@ -23,9 +26,7 @@ client.commands = new Collection();
 const commands = [];
 
 const commandsPath = path.join(__dirname, "commands");
-const commandFiles = fs
-  .readdirSync(commandsPath)
-  .filter((file) => file.endsWith(".js"));
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
 
 for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
@@ -33,7 +34,6 @@ for (const file of commandFiles) {
   commands.push(command.data.toJSON());
 }
 
-// Registrar comandos
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 (async () => {
   try {
@@ -47,16 +47,27 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
   }
 })();
 
-// Bot listo
 client.once(Events.ClientReady, () => {
   console.log(`🟢 Bot listo como ${client.user.tag}`);
 });
 
-// Ejecutar comandos
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
+
+    // Validación si es /read y está en la cola
+    if (interaction.commandName === "read") {
+      const member = interaction.member;
+      const voiceChannel = member.voice.channel;
+
+      if (!voiceChannel || !isInQueue(interaction.guild.id, voiceChannel.id, member.user.id)) {
+        return interaction.reply({
+          content: "❌ Debes estar en un canal de voz y haber ingresado a la cola para usar este comando.",
+          ephemeral: true,
+        });
+      }
+    }
 
     try {
       await command.execute(interaction);
@@ -69,9 +80,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 
-  // 💬 Manejo de botones
+  // Botones para idioma y nivel
   if (interaction.isButton()) {
-    // Selección de idioma
     if (interaction.customId.startsWith("lang_")) {
       const lang = interaction.customId.split("_")[1];
 
@@ -93,18 +103,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const i18n = labels[lang] || labels.en;
 
       const levelRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`read_${lang}_beginner`)
-          .setLabel(i18n.beginner)
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId(`read_${lang}_intermediate`)
-          .setLabel(i18n.intermediate)
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId(`read_${lang}_advanced`)
-          .setLabel(i18n.advanced)
-          .setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId(`read_${lang}_beginner`).setLabel(i18n.beginner).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`read_${lang}_intermediate`).setLabel(i18n.intermediate).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`read_${lang}_advanced`).setLabel(i18n.advanced).setStyle(ButtonStyle.Secondary)
       );
 
       return interaction.update({
@@ -113,7 +114,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     }
 
-    // Obtener lectura
     if (interaction.customId.startsWith("read_")) {
       const [, lang, level] = interaction.customId.split("_");
 

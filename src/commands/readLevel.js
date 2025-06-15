@@ -1,4 +1,10 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const {
+  SlashCommandBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
+const { isInQueue } = require("../utils/queueManager");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -6,6 +12,31 @@ module.exports = {
     .setDescription("Get a reading for your level"),
 
   async execute(interaction) {
+    const member = interaction.member;
+    const voiceChannel = member.voice.channel;
+
+    if (!voiceChannel) {
+      return interaction.reply({
+        content:
+          "❌ Debes estar en un canal de voz para solicitar una lectura.",
+        ephemeral: true,
+      });
+    }
+
+    const inQueue = isInQueue(
+      interaction.guild.id,
+      voiceChannel.id,
+      member.user.id
+    );
+
+    if (!inQueue) {
+      return interaction.reply({
+        content:
+          "❌ Debes unirte a la cola con `/join` antes de solicitar una lectura.",
+        ephemeral: true,
+      });
+    }
+
     const langRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("lang_en")
@@ -18,8 +49,8 @@ module.exports = {
     );
 
     await interaction.reply({
-      content: "Select a language to get started:",
-      components: [langRow]
+      content: "✅ Estás en la cola. Ahora elige un idioma para comenzar:",
+      components: [langRow],
     });
   },
 };
